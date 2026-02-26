@@ -1,0 +1,41 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+
+
+# ----- Load xi and rho -----
+xi_data = {}
+rho_data = {}
+
+
+with open("ising_1D_data.csv") as f:
+   reader = csv.reader(f)
+   next(reader)
+   for row in reader:
+       T = float(row[0])
+       rho_data[T] = float(row[1])
+       xi_data[T] = float(row[2])
+
+
+# ----- Plot ξ vs T -----
+plt.figure(figsize=(8,6))
+plt.plot(list(xi_data.keys()), list(xi_data.values()), 'o-', color='red')
+plt.xlabel("Temperature T")
+plt.ylabel("Correlation Length ξ")
+plt.title("1D Ising Correlation Length vs Temperature")
+plt.grid(True)
+plt.savefig("ising_1D_xi_vs_T.png", dpi=150)
+
+
+# ----- Plot ρ vs T -----
+plt.figure(figsize=(8,6))
+plt.plot(list(rho_data.keys()), list(rho_data.values()), 'o-', color='green')
+plt.xlabel("Temperature T")
+plt.ylabel("Domain Wall Density ρ")
+plt.title("1D Ising Domain Wall Density vs Temperature")
+plt.grid(True)
+plt.savefig("ising_1D_rho_vs_T.png", dpi=150)
+
+
+plt.close("all")
+print("Plots generated.")

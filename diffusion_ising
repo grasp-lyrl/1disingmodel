@@ -1,0 +1,105 @@
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+class SimpleDiffusionMLP(nn.Module):
+   def __init__(self, N=200, hidden=256):
+       super().__init__()
+       self.net = nn.Sequential(
+           nn.Linear(N, hidden),
+           nn.ReLU(),
+           nn.Linear(hidden, hidden),
+           nn.ReLU(),
+           nn.Linear(hidden, N),
+       )
+
+
+   def forward(self, x):
+       return self.net(x)
+
+
+
+
+def add_noise(x, beta):
+   """
+   Forward diffusion: add Gaussian noise to x
+   """
+   beta_t = torch.tensor(beta, device=x.device, dtype=x.dtype)
+
+
+   noise = torch.randn_like(x)
+   noisy = torch.sqrt(1 - beta_t) * x + torch.sqrt(beta_t) * noise
+
+
+   return noisy, noise
+
+
+
+
+def domain_wall_density(config):
+   return np.mean(0.5 * (1 - config * np.roll(config, -1)))
+
+
+
+
+if __name__ == "__main__":
+
+
+   device = "cuda" if torch.cuda.is_available() else "cpu"
+   print("Using device:", device)
+
+
+   T_list = [0.5, 1.0, 2.0, 2.5, 3.0]
+   beta = 0.1
+   epochs = 500
+   n_steps = 200
+
+
+   results = []
+
+
+   for T in T_list:
+       print(f"\nTraining diffusion at T = {T}")
+
+
+       configs = np.load(f"ising_data/ising_T{T:.2f}.npy").astype(np.float32)
+       configs = torch.tensor(configs).to(device)
+
+
+       model = SimpleDiffusionMLP(N=configs.shape[1]).to(device)
+       optimizer = optim.Adam(model.parameters(), lr=1e-3)
+       loss_fn = nn.MSELoss()
+
+
+       for epoch in range(epochs):
+           optimizer.zero_grad()
+           noisy, noise = add_noise(configs, beta)
+           pred_noise = model(noisy)
+           loss = loss_fn(pred_noise, noise)
+           loss.backward()
+           optimizer.step()
+
+
+       # Sampling
+       with torch.no_grad():
+           x = torch.randn_like(configs)
+           for _ in range(n_steps):
+               x = x - beta * model(x)
+           sampled_configs = torch.sign(x).cpu().numpy()
+
+
+       true_rhos = [domain_wall_density(c.cpu().numpy()) for c in configs]
+       gen_rhos = [domain_wall_density(c) for c in sampled_configs]
+
+
+       results.append([
+           T,
+           np.mean(true_rhos),
+           np.mean(gen_rhos)
+       ])
+
+
+   np.save("diffusion_results.npy", np.array(results))
+   print("Diffusion training complete.")

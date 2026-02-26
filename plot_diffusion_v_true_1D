@@ -1,0 +1,73 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+
+# Load TRUE Ising data
+# ----------------------
+
+
+true_rho = {}
+
+
+with open("ising_1D_data.csv", "r") as f:
+   reader = csv.reader(f)
+   next(reader)  # skip header
+   for row in reader:
+       T = float(row[0])
+       rho = float(row[1])
+       true_rho[T] = rho
+
+
+# Load Diffusion results
+# ----------------------
+
+
+diffusion_data = np.load("diffusion_results.npy")
+
+
+gen_rho = {}
+for row in diffusion_data:
+   T, true_mean, gen_mean = row
+   gen_rho[T] = gen_mean
+
+
+# Prepare plotting
+# -------------------
+
+
+Ts = sorted(true_rho.keys())
+
+
+true_vals = [true_rho[T] for T in Ts]
+gen_vals  = [gen_rho[T] for T in Ts]
+
+
+
+# Plot
+# -------------------
+
+plt.figure(figsize=(8,6))
+
+
+plt.plot(Ts, true_vals, 'o-', linewidth=2, markersize=8,
+        label="True Ising")
+
+
+plt.plot(Ts, gen_vals, 's--', linewidth=2, markersize=8,
+        label="Generated Ising (Diffusion)")
+
+
+plt.xlabel("Temperature T", fontsize=12)
+plt.ylabel("Domain Wall Density ρ", fontsize=12)
+plt.title("Domain Wall Density vs Temperature\nTrue vs Generated 1D Ising", fontsize=14)
+
+
+plt.legend()
+plt.grid(True)
+
+
+plt.savefig("1D_domain_wall_true_vs_generated.png", dpi=150, bbox_inches='tight')
+plt.close()
+
+
+print("Plot saved as 1D_domain_wall_true_vs_generated.png")

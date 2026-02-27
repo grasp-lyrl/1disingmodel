@@ -1,0 +1,33 @@
+# Sampling
+
+def sample_model(model, betas, timesteps, n_samples, batch_size=64):
+
+    model.eval()
+
+    alphas = 1 - betas
+    alphas_prod = torch.cumprod(alphas, dim=0)
+    sqrt_one_minus = torch.sqrt(1 - alphas_prod)
+
+    samples = []
+
+    with torch.no_grad():
+        for start in range(0, n_samples, batch_size):
+
+            bs = min(batch_size, n_samples-start)
+            x = torch.randn(bs,1,32,32,device=device)
+
+            for t in reversed(range(timesteps)):
+                t_tensor = torch.full((bs,), t, device=device)
+                pred = model(x, t_tensor)
+
+                x = (1/torch.sqrt(alphas[t])) * (
+                    x - betas[t]/sqrt_one_minus[t] * pred
+                )
+
+                if t > 0:
+                    x += torch.sqrt(betas[t]) * torch.randn_like(x)
+
+            spins = (x > 0).float()*2 - 1
+            samples.append(spins.cpu())
+
+    return torch.cat(samples, dim=0)

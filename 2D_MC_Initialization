@@ -1,0 +1,47 @@
+# imports
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from scipy.spatial.distance import jensenshannon
+import math
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Using device:", device)
+
+# 2D Ising monte carlo
+def initialize_lattice(N):
+    return np.random.choice([-1, 1], size=(N, N))
+
+
+def metropolis_sweep(lattice, T):
+    L = lattice.shape[0]
+    for _ in range(L * L):
+        x, y = np.random.randint(0, L, size=2)
+        neighbors = (
+            lattice[(x+1)%L, y] +
+            lattice[(x-1)%L, y] +
+            lattice[x, (y+1)%L] +
+            lattice[x, (y-1)%L]
+        )
+        dE = 2 * lattice[x,y] * neighbors
+        if dE < 0 or np.random.rand() < np.exp(-dE/T):
+            lattice[x,y] *= -1
+    return lattice
+
+
+def generate_ising_data(N, T, n_samples):
+    lattice = initialize_lattice(N)
+
+    for _ in range(500):  # thermalization
+        metropolis_sweep(lattice, T)
+
+    configs = []
+    for _ in range(n_samples):
+        for _ in range(10):
+            metropolis_sweep(lattice, T)
+        configs.append(np.copy(lattice))
+
+    return np.array(configs, dtype=np.float32)

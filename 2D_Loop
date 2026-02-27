@@ -1,0 +1,24 @@
+# Loop over temps
+
+T_values = [1.0, 1.5, 2.0, 2.269, 2.5, 2.8, 3.0]
+js_results = {}
+
+for T in T_values:
+
+    model, betas, timesteps, true_data = train_model_for_temperature(T)
+
+    generated = sample_model(
+        model,
+        betas,
+        timesteps,
+        n_samples=800,   # 800 is enough
+        batch_size=64
+    ).numpy().squeeze(1)
+
+    js = compute_js(true_data, generated)
+
+    js_results[T] = js
+    print(f"T={T} | JS={js:.6f}")
+
+    del model
+    torch.cuda.empty_cache()

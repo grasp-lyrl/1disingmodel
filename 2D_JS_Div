@@ -1,0 +1,19 @@
+# JSD
+
+def compute_js(true_data, generated):
+
+    m1 = np.abs(true_data.mean(axis=(1,2)))
+    m2 = np.abs(generated.mean(axis=(1,2)))
+
+    bins = np.linspace(0,1,60)
+
+    h1,_ = np.histogram(m1,bins=bins)
+    h2,_ = np.histogram(m2,bins=bins)
+
+    h1 = h1.astype(np.float64)
+    h2 = h2.astype(np.float64)
+
+    h1 /= h1.sum()
+    h2 /= h2.sum()
+
+    return jensenshannon(h1+1e-12, h2+1e-12)

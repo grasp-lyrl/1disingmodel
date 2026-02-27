@@ -1,0 +1,55 @@
+# Training
+
+def train_model_for_temperature(T):
+
+    print(f"\nTraining model for T = {T}")
+
+    data = generate_ising_data(32, T, 1500)
+
+    dataset = TensorDataset(torch.tensor(data).unsqueeze(1))
+    loader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+    model = DiffusionUNet().to(device)
+
+    optimizer = AdamW(model.parameters(), lr=3e-4)
+    scheduler = CosineAnnealingLR(optimizer, T_max=100)
+    criterion = nn.MSELoss()
+
+    timesteps = 300
+    betas = cosine_beta_schedule(timesteps).to(device)
+
+    alphas = 1 - betas
+    alphas_prod = torch.cumprod(alphas, dim=0)
+    sqrt_alphas_prod = torch.sqrt(alphas_prod)
+    sqrt_one_minus = torch.sqrt(1 - alphas_prod)
+
+    epochs = 100
+
+    for epoch in range(epochs):
+        total_loss = 0
+
+        for (x0,) in loader:
+            x0 = x0.to(device)
+
+            B = x0.shape[0]
+            t = torch.randint(0, timesteps, (B,), device=device)
+            noise = torch.randn_like(x0)
+
+            a = sqrt_alphas_prod[t].view(B,1,1,1)
+            b = sqrt_one_minus[t].view(B,1,1,1)
+
+            x_t = a*x0 + b*noise
+
+            pred = model(x_t, t)
+            loss = criterion(pred, noise)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+
+        scheduler.step()
+        print(f"Epoch {epoch+1} | Loss: {total_loss/len(loader):.5f}")
+
+    return model, betas, timesteps, data
